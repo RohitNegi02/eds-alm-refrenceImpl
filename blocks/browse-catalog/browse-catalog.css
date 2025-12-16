@@ -1,0 +1,356 @@
+.browse-catalog {
+  padding: 40px 0;
+  background-color: #f8f9fa;
+}
+
+.browse-catalog .catalog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding: 0 20px;
+}
+
+.browse-catalog .catalog-title {
+  font-size: var(--heading-font-size-xl);
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0;
+}
+
+.browse-catalog .catalog-search {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.browse-catalog .search-input {
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 16px;
+  width: 300px;
+}
+
+.browse-catalog .filters-toggle {
+  background: none;
+  border: 1px solid #ddd;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.browse-catalog .catalog-content {
+  display: flex;
+  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.browse-catalog .catalog-sidebar {
+  width: 280px;
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  height: fit-content;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.browse-catalog .sidebar-section {
+  margin-bottom: 25px;
+}
+
+.browse-catalog .sidebar-section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: var(--text-color);
+}
+
+.browse-catalog .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.browse-catalog .filter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.browse-catalog .filter-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.browse-catalog .filter-item label {
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+}
+
+.browse-catalog .catalog-main {
+  flex: 1;
+}
+
+.browse-catalog .catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.browse-catalog .course-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.browse-catalog .card-image {
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+  position: relative;
+}
+
+.browse-catalog .card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.browse-catalog .course-card:hover .card-image img {
+  transform: scale(1.05);
+}
+
+.browse-catalog .card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.browse-catalog .card-overlay .card-type-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.browse-catalog .card-overlay .card-icon {
+  font-size: 48px;
+  color: white;
+  opacity: 0.9;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.browse-catalog .course-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.browse-catalog .card-header {
+  position: relative;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.browse-catalog .card-header.self-paced {
+  background: linear-gradient(135deg, #b8860b, #daa520);
+}
+
+.browse-catalog .card-header.virtual-classroom {
+  background: linear-gradient(135deg, #4682b4, #5f9ea0);
+}
+
+.browse-catalog .card-header.certification {
+  background: linear-gradient(135deg, #8b4513, #a0522d);
+}
+
+.browse-catalog .card-header.learning-path {
+  background: linear-gradient(135deg, #2e8b57, #3cb371);
+}
+
+.browse-catalog .card-type-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.browse-catalog .card-icon {
+  font-size: 48px;
+  opacity: 0.8;
+}
+
+.browse-catalog .card-body {
+  padding: 20px;
+}
+
+.browse-catalog .card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 8px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.browse-catalog .card-type {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 12px;
+  text-transform: capitalize;
+}
+
+.browse-catalog .card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+
+.browse-catalog .card-skills {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #666;
+}
+
+.browse-catalog .card-status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.browse-catalog .status-complete {
+  background: #d4edda;
+  color: #155724;
+}
+
+.browse-catalog .status-enrolled {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.browse-catalog .status-available {
+  background: #f8f9fa;
+  color: #6c757d;
+}
+
+.browse-catalog .card-duration {
+  font-size: 12px;
+  color: #666;
+  margin-top: 8px;
+}
+
+.browse-catalog .load-more-container {
+  text-align: center;
+  margin-top: 30px;
+}
+
+.browse-catalog .load-more-btn {
+  background-color: var(--link-color);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.browse-catalog .load-more-btn:hover {
+  background-color: var(--link-hover-color);
+}
+
+.browse-catalog .load-more-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.browse-catalog .loading-text {
+  color: #666;
+  font-style: italic;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .browse-catalog .catalog-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+  
+  .browse-catalog .catalog-search {
+    justify-content: space-between;
+  }
+  
+  .browse-catalog .search-input {
+    width: 100%;
+    max-width: 250px;
+  }
+  
+  .browse-catalog .catalog-content {
+    flex-direction: column;
+  }
+  
+  .browse-catalog .catalog-sidebar {
+    width: 100%;
+    order: 2;
+  }
+  
+  .browse-catalog .catalog-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .browse-catalog .catalog-header {
+    padding: 0 10px;
+  }
+  
+  .browse-catalog .catalog-content {
+    padding: 0 10px;
+  }
+  
+  .browse-catalog .course-card {
+    margin: 0 5px;
+  }
+}

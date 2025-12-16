@@ -92,6 +92,16 @@ export function decorateMain(main) {
 async function loadEager(doc) {
   document.documentElement.lang = 'en';
   decorateTemplateAndTheme();
+  
+  // Load envConfig first, then initialize OAuth
+  try {
+    await import('./envConfig.js');
+    const { initOAuth } = await import('./oauth.js');
+    initOAuth();
+  } catch (error) {
+    console.error('Failed to load OAuth:', error);
+  }
+  
   const main = doc.querySelector('main');
   if (main) {
     decorateMain(main);
