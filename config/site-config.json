@@ -17,8 +17,8 @@
         "overlay": {
             "url": "https://1070326-refimplalm-stage.adobeio-static.net/api/v1/web/EdsAlm/course-viewer",
             "type": "markup"
-        }
-       
+        },
+       "contentBusId": "42be6a03b427117293da98f74c897726d0da109870e707ca96064ff37db"
     },
     "lastModified": "2025-11-03T10:31:18.847Z",
     "created": "2025-11-03T09:31:33.210Z"
