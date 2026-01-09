@@ -1,0 +1,8 @@
+mountpoints:
+  /:
+    url: "https://content.da.live/rohitnegi02/eds-alm-refrenceimpl"
+    type: "markup"
+    overlay:
+      url: "https://1070326-refimplalm-stage.adobeio-static.net/api/v1/web/EdsAlm/course-viewer"
+      type: "markup"
+      suffix: ".html"
