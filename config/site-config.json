@@ -2,7 +2,7 @@
 {
     "version": 3,
     "code": {
-        "owner": "rohitnegi02",
+        "owner": "rohitamazon550",
         "repo": "eds-alm-refrenceimpl",
         "source": {
             "type": "github",
@@ -11,7 +11,7 @@
     },
     "content": {
         "source": {
-            "url": "https://content.da.live/RohitNegi02/eds-alm-refrenceimpl/",
+            "url": "https://content.da.live/rohitnegi02/eds-alm-refrenceimpl/",
             "type": "markup"
         },
         "overlay": {
@@ -19,7 +19,5 @@
             "type": "markup"
         },
        "contentBusId": "42be6a03b427117293da98f74c897726d0da109870e707ca96064ff37db"
-    },
-    "lastModified": "2025-11-03T10:31:18.847Z",
-    "created": "2025-11-03T09:31:33.210Z"
+    }
 }
