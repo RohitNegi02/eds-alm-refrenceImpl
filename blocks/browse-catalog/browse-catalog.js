@@ -1,3 +1,5 @@
+import { createErrorBoundary } from '../../scripts/error-boundary.js';
+
 // API Configuration
 const API_CONFIG = {
   baseUrl: 'https://learningmanager.adobe.com/primeapi/v2',
@@ -40,7 +42,7 @@ async function searchLearningObjects(searchTerm, limit = 9, cursor = null) {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error searching learning objects:', error);
+    // Error searching learning objects - return empty result
     return { data: [], meta: { count: 0 }, links: {} };
   }
 }
@@ -49,7 +51,7 @@ async function searchLearningObjects(searchTerm, limit = 9, cursor = null) {
 async function fetchLearningObjects(limit = 9, searchTerm = '', filters = {}, cursor = null) {
   try {
     const params = new URLSearchParams({
-      'include': 'instances.enrollment.loResourceGrades,enrollment.loInstance.loResources.resources,subLOs.prerequisiteLOs,subLOs.subLOs.prerequisiteLOs,authors,subLOs.enrollment.loResourceGrades, subLOs.subLOs.enrollment.loResourceGrades, subLOs.subLOs.instances.loResources.resources, subLOs.instances.loResources.resources,instances.loResources.resources,supplementaryLOs.instances.loResources.resources,supplementaryResources,subLOs.supplementaryResources,subLOs.enrollment,instances.loResources.resources.room,subLOs.enrollment.loInstance.loResources.resources,prerequisiteLOs.enrollment,skills',
+      'include': 'instances.enrollment.loResourceGrades,enrollment.loInstance.loResources.resources,subLOs.prerequisiteLOs,subLOs.subLOs.prerequisiteLOs,authors,subLOs.enrollment.loResourceGrades, subLOs.subLOs.enrollment.loResourceGrades, subLOs.subLOs.instances.loResources.resources, subLOs.instances.loResources.resources,instances.loResources.resources,supplementaryLOs.instances.loResources.resources,supplementaryResources,subLOs.supplementaryResources,subLOs.enrollment,instances.loResources.resources.room,subLOs.enrollment.loInstance.loResources.resources,prerequisiteLOs.enrollment,skills.skillLevel.skill',
       'page[limit]': limit,
       'sort': 'name',
       'filter.ignoreEnhancedLP': 'true'
@@ -84,74 +86,39 @@ async function fetchLearningObjects(limit = 9, searchTerm = '', filters = {}, cu
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error fetching learning objects:', error);
-    // Return fallback data in case of error
+    // Error fetching learning objects - return fallback data
     return { data: [], meta: { count: 0 }, links: {} };
   }
 }
 
-// Fetch skill details from API
-async function fetchSkillDetails(skillId) {
-  try {
-    const url = `${API_CONFIG.baseUrl}/skills/${skillId}`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: API_CONFIG.headers
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error('Error fetching skill details:', error);
-    return null;
-  }
-}
-
-// Cache for skill names to avoid repeated API calls
-const skillCache = new Map();
-
-// Get skill names for a learning object
-async function getSkillNames(item) {
+// Get skill names for a learning object from included data (no API calls)
+function getSkillNames(item, includedData = []) {
   if (!item.relationships || !item.relationships.skills || !item.relationships.skills.data) {
     return ['General'];
   }
 
-  const skillPromises = item.relationships.skills.data.map(async (skillRef) => {
+  const skillNames = item.relationships.skills.data.map((skillRef) => {
     // Extract skill ID from the learningObjectSkill ID
     // Format is usually "course:id_skillId" or similar
     const skillIdMatch = skillRef.id.match(/_(\d+)$/);
-    if (!skillIdMatch) return 'General';
+    if (!skillIdMatch) return null;
     
     const skillId = skillIdMatch[1];
     
-    // Check cache first
-    if (skillCache.has(skillId)) {
-      return skillCache.get(skillId);
-    }
-
-    // Fetch skill details
-    const skillData = await fetchSkillDetails(skillId);
+    // Find skill in included data (no API call needed!)
+    const skillData = includedData.find(inc => 
+      inc.type === 'skill' && inc.id === skillId
+    );
+    
     if (skillData && skillData.attributes && skillData.attributes.name) {
-      const skillName = skillData.attributes.name;
-      skillCache.set(skillId, skillName);
-      return skillName;
+      return skillData.attributes.name;
     }
     
-    return 'General';
-  });
+    return null;
+  }).filter(name => name !== null);
 
-  try {
-    const skillNames = await Promise.all(skillPromises);
-    return skillNames.filter(name => name !== 'General').slice(0, 2); // Show max 2 skills
-  } catch (error) {
-    console.error('Error getting skill names:', error);
-    return ['General'];
-  }
+  // Return skill names or 'General' if none found
+  return skillNames.length > 0 ? skillNames.slice(0, 2) : ['General'];
 }
 
 function formatDuration(seconds) {
@@ -189,9 +156,31 @@ function getCardClass(loFormat) {
 }
 
 function getEnrollmentStatus(item) {
-  if (item.relationships && item.relationships.enrollment) {
+  // Check if user has enrollment data
+  if (item.relationships && item.relationships.enrollment && item.relationships.enrollment.data) {
+    const enrollment = item.relationships.enrollment.data;
+    
+    // If enrolled, check the enrollment state
+    // Possible states: started, completed, etc.
+    if (enrollment.attributes) {
+      const state = enrollment.attributes.state;
+      const progressPercent = enrollment.attributes.progressPercent || 0;
+      const hasPassed = enrollment.attributes.hasPassed;
+      
+      if (hasPassed || progressPercent === 100) {
+        return 'Completed';
+      } else if (progressPercent > 0) {
+        return `In Progress (${progressPercent}%)`;
+      } else {
+        return 'Enrolled';
+      }
+    }
+    
+    // Default for enrolled but no status info
+    return 'Enrolled';
   }
-  return 'Complete';
+  
+  // Not enrolled
   return '';
 }
 
@@ -222,8 +211,8 @@ async function createCourseCard(item, includedData = []) {
   const duration = formatDuration(attributes.duration);
   const status = getEnrollmentStatus(item);
   
-  // Get actual skill names
-  const skillNames = await getSkillNames(item);
+  // Get actual skill names from included data
+  const skillNames = getSkillNames(item, includedData);
   const skillsText = skillNames.length > 0 ? skillNames.join(', ') : 'General';
   
   const card = document.createElement('div');
@@ -259,8 +248,6 @@ async function createCourseCard(item, includedData = []) {
   
   // Add click handler
   card.addEventListener('click', () => {
-    console.log('Course clicked:', item.id);
-    
     // Navigate to course overview page
     const courseId = item.id;
     // For now, use the first instance ID if available, otherwise use the course ID
@@ -376,14 +363,20 @@ function filterCourses(courses, searchTerm) {
 }
 
 export default async function decorate(block) {
-  // Clear the block
-  block.innerHTML = '';
-  
-  // Show loading state
-  block.innerHTML = '<div style="text-align: center; padding: 40px;">Loading courses...</div>';
-  
-  // Create header
-  const header = createHeader();
+  // Create error boundary
+  const errorBoundary = createErrorBoundary(block, {
+    blockName: 'Browse Catalog',
+    fallbackMessage: 'Unable to load course catalog. Please try again.',
+    showRetry: true
+  });
+
+  // Wrap the entire render logic in error boundary
+  await errorBoundary.render(async () => {
+    // Clear the block
+    block.innerHTML = '';
+    
+    // Create header
+    const header = createHeader();
   
   // Create main content container
   const contentContainer = document.createElement('div');
@@ -466,10 +459,10 @@ export default async function decorate(block) {
       
       if (resetData) {
         allCourses = newCourses;
-        renderCourses(allCourses, false);
+        renderCourses(allCourses, false, data.included || []);
       } else {
         allCourses = [...allCourses, ...newCourses];
-        renderCourses(newCourses, true);
+        renderCourses(newCourses, true, data.included || []);
       }
       
       // Extract cursor from next link if available
@@ -482,16 +475,10 @@ export default async function decorate(block) {
         hasMoreData = true;
       }
       
-      // Update course count if available
-      if (data.meta && data.meta.count) {
-        console.log(`Loaded ${allCourses.length} of ${data.meta.count} total courses`);
-      }
-      
       isLoading = false;
       updateLoadMoreButton();
       
     } catch (error) {
-      console.error('Failed to load courses:', error);
       isLoading = false;
       if (resetData) {
         showError('Failed to load courses. Please try again later.');
@@ -531,70 +518,68 @@ export default async function decorate(block) {
     return activeTypes.length > 0 ? activeTypes : ['course', 'learningProgram', 'certification', 'jobAid'];
   }
   
-  // Initial load
-  await loadCourses(true);
+    // Initial load
+    await loadCourses(true);
+    
+    // Clear loading and add content
+    block.innerHTML = '';
+    block.appendChild(header);
+    
+    mainContent.appendChild(courseGrid);
+    mainContent.appendChild(loadMoreContainer);
+    contentContainer.appendChild(mainContent);
+    block.appendChild(contentContainer);
   
-  // Clear loading and add content
-  block.innerHTML = '';
-  block.appendChild(header);
-  
-  mainContent.appendChild(courseGrid);
-  mainContent.appendChild(loadMoreContainer);
-  contentContainer.appendChild(mainContent);
-  block.appendChild(contentContainer);
-  
-  // Add search functionality with debouncing
-  let searchTimeout;
-  const searchInput = header.querySelector('.search-input');
-  searchInput.addEventListener('input', (e) => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(async () => {
-      currentFilters.searchTerm = e.target.value;
-      
-      // Use search API if there's a search term, otherwise use regular API
-      if (currentFilters.searchTerm.trim()) {
-        try {
-          isLoading = true;
-          updateLoadMoreButton();
-          
-          const data = await searchLearningObjects(currentFilters.searchTerm, 9);
-          const newCourses = data.data || [];
-          
-          allCourses = newCourses;
-          await renderCourses(allCourses, false, data.included || []);
-          
-          // Handle pagination for search results
-          nextCursor = null;
-          hasMoreData = false;
-          if (data.links && data.links.next) {
-            const nextUrl = new URL(data.links.next);
-            nextCursor = nextUrl.searchParams.get('page[cursor]');
-            hasMoreData = true;
+    // Add search functionality with debouncing
+    let searchTimeout;
+    const searchInput = header.querySelector('.search-input');
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(async () => {
+        currentFilters.searchTerm = e.target.value;
+        
+        // Use search API if there's a search term, otherwise use regular API
+        if (currentFilters.searchTerm.trim()) {
+          try {
+            isLoading = true;
+            updateLoadMoreButton();
+            
+            const data = await searchLearningObjects(currentFilters.searchTerm, 9);
+            const newCourses = data.data || [];
+            
+            allCourses = newCourses;
+            await renderCourses(allCourses, false, data.included || []);
+            
+            // Handle pagination for search results
+            nextCursor = null;
+            hasMoreData = false;
+            if (data.links && data.links.next) {
+              const nextUrl = new URL(data.links.next);
+              nextCursor = nextUrl.searchParams.get('page[cursor]');
+              hasMoreData = true;
+            }
+            
+            isLoading = false;
+            updateLoadMoreButton();
+          } catch (error) {
+            isLoading = false;
+            showError('Search failed. Please try again.');
           }
-          
-          isLoading = false;
-          updateLoadMoreButton();
-        } catch (error) {
-          console.error('Search failed:', error);
-          isLoading = false;
-          showError('Search failed. Please try again.');
+        } else {
+          await loadCourses(true); // Reset data for new search
         }
-      } else {
-        await loadCourses(true); // Reset data for new search
-      }
-    }, 500); // 500ms debounce
-  });
-  
-  // Add filter functionality
-  const filterCheckboxes = sidebar.querySelectorAll('input[type="checkbox"]');
-  filterCheckboxes.forEach(checkbox => {
-    checkbox.addEventListener('change', async () => {
-      console.log('Filter changed:', checkbox.id, checkbox.checked);
-      
-      // If it's a type filter, reload courses
-      if (['courses', 'learning-paths', 'job-aids', 'certifications'].includes(checkbox.id)) {
-        await loadCourses(true); // Reset data for new filter
-      }
+      }, 500); // 500ms debounce
     });
-  });
+    
+    // Add filter functionality
+    const filterCheckboxes = sidebar.querySelectorAll('input[type="checkbox"]');
+    filterCheckboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', async () => {
+        // If it's a type filter, reload courses
+        if (['courses', 'learning-paths', 'job-aids', 'certifications'].includes(checkbox.id)) {
+          await loadCourses(true); // Reset data for new filter
+        }
+      });
+    });
+  }, 'Loading course catalog...');
 }

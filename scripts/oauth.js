@@ -62,12 +62,20 @@ async function exchangeCodeForToken(code, config) {
 
     // Authentication successful
 
-    // Remove code parameter from URL and reload to clean up
-    const url = new URL(window.location);
-    url.searchParams.delete('code');
-    url.searchParams.delete('state');
-    url.searchParams.delete('PRIME_BASE');
-    window.location.href = url.toString();
+    // Check if there's a return URL stored
+    const returnUrl = sessionStorage.getItem('alm_return_url');
+    if (returnUrl) {
+      sessionStorage.removeItem('alm_return_url');
+      // Redirect to the original page
+      window.location.href = returnUrl;
+    } else {
+      // Remove code parameter from URL and reload to clean up
+      const url = new URL(window.location);
+      url.searchParams.delete('code');
+      url.searchParams.delete('state');
+      url.searchParams.delete('PRIME_BASE');
+      window.location.href = url.toString();
+    }
   } catch (error) {
     // Failed to get access token - handle silently
   }

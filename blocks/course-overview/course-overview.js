@@ -1,3 +1,5 @@
+import { createErrorBoundary } from '../../scripts/error-boundary.js';
+
 // API Configuration
 const API_CONFIG = {
   baseUrl: 'https://learningmanager.adobe.com/primeapi/v2',
@@ -41,7 +43,6 @@ async function checkEnrollmentStatus(courseId) {
     
     return { isEnrolled: hasEnrollment, data: data };
   } catch (error) {
-    console.error('Error checking enrollment status:', error);
     return { isEnrolled: false, data: null };
   }
 }
@@ -73,7 +74,6 @@ async function enrollUser(courseId) {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error enrolling user:', error);
     return null;
   }
 }
@@ -102,7 +102,6 @@ async function getPlayerState(courseId, loInstanceId) {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error getting player state:', error);
     return null;
   }
 }
@@ -173,28 +172,20 @@ function createFluidicPlayerModal(playerUrl) {
 // Handle module click
 async function handleModuleClick(courseId, resourceId, resourceData, includedData) {
   try {
-    console.log('Starting module launch process...');
-    
     // Check if user is already enrolled
-    console.log('Checking enrollment status for course:', courseId);
     const enrollmentStatus = await checkEnrollmentStatus(courseId);
     
     let enrollmentResult = null;
     
     if (!enrollmentStatus.isEnrolled) {
       // User is not enrolled, so enroll them
-      console.log('User not enrolled, enrolling in course:', courseId);
       enrollmentResult = await enrollUser(courseId);
       
       if (!enrollmentResult) {
-        console.error('Failed to enroll user');
-        alert('Failed to enroll in course. Please try again.');
+        // Enrollment failed - fail silently, player will show error
         return;
       }
-      
-      console.log('User enrolled successfully');
     } else {
-      console.log('User already enrolled, skipping enrollment');
       enrollmentResult = enrollmentStatus.data;
     }
     
@@ -203,14 +194,11 @@ async function handleModuleClick(courseId, resourceId, resourceData, includedDat
     const baseUrl = API_CONFIG.baseUrl.replace('/primeapi/v2', ''); // Remove API path to get base domain
     const embeddableUrl = `${baseUrl}/app/player?lo_id=${courseId}&access_token=${accessToken}`;
     
-    console.log('Launching embeddable player with URL:', embeddableUrl);
-    
     // Open embeddable player in modal
     createFluidicPlayerModal(embeddableUrl);
     
   } catch (error) {
-    console.error('Error launching module:', error);
-    alert('An error occurred while launching the course. Please try again.');
+    // Error launching course - fail silently
   }
 }
 
@@ -247,7 +235,6 @@ async function fetchCourseDetails(courseId) {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error fetching course details:', error);
     return null;
   }
 }
@@ -361,10 +348,37 @@ function createModulesSection(courseData, includedData = []) {
                   ? resourceData.attributes.localizedMetadata[0] 
                   : { name: resourceData.attributes.name || 'Module' };
                 
-                const isCompleted = Math.random() > 0.5; // Mock completion status
-                const status = isCompleted ? 'completed' : 'in-progress';
-                const statusIcon = isCompleted ? '✓' : '⏱️';
-                const statusText = isCompleted ? 'Last visited' : 'In Progress';
+                // Get actual completion status from enrollment data
+                let isCompleted = false;
+                let completionPercentage = 0;
+                
+                if (courseData.relationships && courseData.relationships.enrollment && 
+                    courseData.relationships.enrollment.data) {
+                  const enrollmentId = courseData.relationships.enrollment.data.id;
+                  const enrollmentData = includedData.find(item => item.id === enrollmentId && item.type === 'learningObjectInstanceEnrollment');
+                  
+                  if (enrollmentData && enrollmentData.relationships && enrollmentData.relationships.loResourceGrades) {
+                    const resourceGrades = enrollmentData.relationships.loResourceGrades.data;
+                    const resourceGrade = resourceGrades.find(grade => {
+                      const gradeData = includedData.find(item => item.id === grade.id);
+                      return gradeData && gradeData.relationships && 
+                             gradeData.relationships.loResource && 
+                             gradeData.relationships.loResource.data.id === resource.id;
+                    });
+                    
+                    if (resourceGrade) {
+                      const gradeData = includedData.find(item => item.id === resourceGrade.id);
+                      if (gradeData && gradeData.attributes) {
+                        isCompleted = gradeData.attributes.hasPassed === true;
+                        completionPercentage = gradeData.attributes.progressPercent || 0;
+                      }
+                    }
+                  }
+                }
+                
+                const status = isCompleted ? 'completed' : (completionPercentage > 0 ? 'in-progress' : 'not-started');
+                const statusIcon = isCompleted ? '✓' : (completionPercentage > 0 ? '⏱️' : '○');
+                const statusText = isCompleted ? 'Completed' : (completionPercentage > 0 ? `In Progress (${completionPercentage}%)` : 'Not Started');
                 
                 if (isCompleted) coreContentCompleted++;
                 
@@ -470,27 +484,29 @@ function createSidebar(coreContentCompleted, totalCoreContent, courseData, inclu
 }
 
 export default async function decorate(block) {
-  // Clear the block
-  block.innerHTML = '';
-  
-  // Show loading state
-  block.innerHTML = '<div class="loading-state">Loading course details...</div>';
-  
-  // Extract IDs from URL
-  const { courseId, instanceId } = extractIdsFromUrl();
-  
-  if (!courseId) {
-    block.innerHTML = '<div class="error-state">Course ID not found in URL</div>';
-    return;
-  }
-  
-  try {
+  // Create error boundary
+  const errorBoundary = createErrorBoundary(block, {
+    blockName: 'Course Overview',
+    fallbackMessage: 'Unable to load course details. Please try again.',
+    showRetry: true
+  });
+
+  // Wrap the entire render logic in error boundary
+  await errorBoundary.render(async () => {
+    // Clear the block
+    block.innerHTML = '';
+    
+    // Extract IDs from URL
+    const { courseId, instanceId } = extractIdsFromUrl();
+    
+    if (!courseId) {
+      throw errorBoundary.BlockError('Course ID not found in URL', 'MISSING_COURSE_ID');
+    }
     // Fetch course details
     const courseResponse = await fetchCourseDetails(courseId);
     
     if (!courseResponse || !courseResponse.data) {
-      block.innerHTML = '<div class="error-state">Failed to load course details</div>';
-      return;
+      throw errorBoundary.BlockError('Failed to load course details from server', 'FETCH_FAILED');
     }
     
     const courseData = courseResponse.data;
@@ -546,18 +562,18 @@ export default async function decorate(block) {
         const courseId = moduleItem.dataset.courseId;
         
         if (resourceId && courseId) {
-          // Find the resource data from included data
-          const resourceData = includedData.find(item => item.id === resourceId);
-          await handleModuleClick(courseId, resourceId, resourceData, includedData);
+          try {
+            // Find the resource data from included data
+            const resourceData = includedData.find(item => item.id === resourceId);
+            await handleModuleClick(courseId, resourceId, resourceData, includedData);
+          } catch (error) {
+            // Module launch failed - fail silently
+          }
         }
       });
       
       // Add cursor pointer style
       moduleItem.style.cursor = 'pointer';
     });
-    
-  } catch (error) {
-    console.error('Error loading course overview:', error);
-    block.innerHTML = '<div class="error-state">An error occurred while loading the course</div>';
-  }
+  }, 'Loading course details...');
 }
